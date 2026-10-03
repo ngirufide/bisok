@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bisoke Admin</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><b>BISOKE ADMIN DASHBOARD</b><a href="/">Customer</a></header><main>
+<section id="login" class="card"><h2>Admin login</h2><input id="pin" type="password" placeholder="PIN"><button onclick="doLogin()">Login</button><p id="msg"></p></section>
+<section id="dash" class="hidden"><div class="stats"><div class="stat">Today<br><b id="today">0</b> RWF</div><div class="stat">All paid<br><b id="all">0</b> RWF</div><div class="stat">Orders<br><b id="count">0</b></div><div class="stat">Pending<br><b id="pending">0</b></div></div>
+<section class="card"><h2>Orders</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Service</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section class="card"><h2>QR Code</h2><img id="qr" style="max-width:320px;width:100%"><p id="qrurl"></p></section>
+</section></main>
+<script>
+let PIN="";
+async function doLogin(){PIN=$("pin").value;let r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pin:PIN})});if(!r.ok){$("msg").textContent="Wrong PIN";return}$("login").classList.add("hidden");$("dash").classList.remove("hidden");load()}
+async function load(){
+ let s=await (await fetch("/api/admin/stats?pin="+encodeURIComponent(PIN))).json();
+ $("today").textContent=Number(s.today).toLocaleString();$("all").textContent=Number(s.total).toLocaleString();$("count").textContent=s.orders;$("pending").textContent=s.pending;
+ let d=await (await fetch("/api/admin/orders?pin="+encodeURIComponent(PIN))).json();
+ $("rows").innerHTML=d.map(o=>`<tr><td>${o.id}</td><td>${e(o.customer_name)}</td><td>${e(o.phone)}</td><td>${e(o.service_name)} × ${o.quantity}</td><td>${Number(o.total).toLocaleString()} RWF</td><td>${o.payment_status}</td><td><select onchange="setStatus(${o.id},this.value)">${["NEW","PROCESSING","READY","COMPLETED","CANCELLED"].map(x=>`<option ${x==o.status?"selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("");
+ let q=await (await fetch("/api/qr")).json();$("qr").src=q.dataUrl;$("qrurl").textContent=q.url;
+}
+async function setStatus(id,status){await fetch(`/api/admin/orders/${id}/status?pin=${encodeURIComponent(PIN)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});load()}
+function $(x){return document.getElementById(x)}function e(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+</script></body></html>
